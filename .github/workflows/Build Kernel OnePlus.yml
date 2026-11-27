@@ -767,6 +767,27 @@ jobs:
           grep -nE '^(REPO_OWNER|REPO_NAME|REPO_BRANCH|KSU_VERSION_API|KSU_VERSION_FULL|VERSION_TAG|GIT_BIN|CURL_BIN)' kernel/Makefile
           echo "::endgroup::"
 
+      - name: Verify SukiSU SELinux Hide
+        run: |
+          if [ -z "${KSU_DIR:-}" ] || [ ! -d "$KSU_DIR" ]; then
+            echo "❌ KSU_DIR 未找到，无法验证 SukiSU SELinux hide 修复"
+            exit 13
+          fi
+          SELINUX_HIDE="$KSU_DIR/kernel/feature/selinux_hide.c"
+          if [ ! -f "$SELINUX_HIDE" ]; then
+            echo "❌ SukiSU 源码缺少 kernel/feature/selinux_hide.c"
+            exit 13
+          fi
+          if ! grep -q 'avd_seqno = 1' "$SELINUX_HIDE"; then
+            echo "❌ SukiSU SELinux hide 源码缺少 avd_seqno 伪装逻辑"
+            exit 13
+          fi
+          if ! grep -q 'fake_status->policyload' "$SELINUX_HIDE"; then
+            echo "❌ SukiSU SELinux hide 源码缺少 policyload 伪装逻辑"
+            exit 13
+          fi
+          echo "✅ SukiSU SELinux hide 已包含 DirtySepolicy avd_seqno/policyload 修复"
+
       - name: Apply Patches SukiSU Nova
         env:
           FILE: ${{ github.event.inputs.FILE }}
